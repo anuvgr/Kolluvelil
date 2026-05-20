@@ -1,10 +1,15 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Save, Download, Upload, UserPlus, Trash2, Key, Activity, Settings as SettingsIcon, ShieldCheck } from 'lucide-react';
+import { Save, Download, Upload, UserPlus, Trash2, Key, Activity, Settings as SettingsIcon, ShieldCheck, Cloud, RefreshCw, CheckCircle2, AlertCircle as AlertIcon, RotateCcw, AlertTriangle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Settings = () => {
-  const { clients, payments, expenses, users, logs, addUser, removeUser, clearLogs } = useApp();
+  const { 
+    clients, payments, expenses, users, logs, 
+    addUser, removeUser, clearLogs,
+    isSyncing, lastSync, syncData,
+    resetFormerTenants, resetAllPayments, resetAllExpenses, resetAllClients, resetCompleteSystem
+  } = useApp();
   const [activeTab, setActiveTab] = useState('general');
   const [newUser, setNewUser] = useState({ username: '', role: 'Manager', password: '' });
 
@@ -197,6 +202,192 @@ const Settings = () => {
     </motion.div>
   );
 
+  const renderCloud = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card settings-card">
+      <div className="card-header">
+        <Cloud className="text-primary" size={24} />
+        <h3>Cloud Synchronization</h3>
+      </div>
+      <div className="card-body">
+        <div className="sync-status-box glass-card mb-20" style={{ background: 'rgba(255,255,255,0.02)' }}>
+          <div className="flex-row align-center justify-between">
+            <div className="flex-row align-center">
+              {isSyncing ? (
+                <RefreshCw size={20} className="text-primary spin" />
+              ) : (
+                <CheckCircle2 size={20} className="text-success" />
+              )}
+              <div style={{ marginLeft: '10px' }}>
+                <h4 style={{ margin: 0 }}>{isSyncing ? 'Synchronizing...' : 'Connected to Cloud'}</h4>
+                <p className="text-muted" style={{ fontSize: '0.8rem', margin: 0 }}>
+                  Last Synced: {lastSync ? new Date(lastSync).toLocaleString() : 'Never'}
+                </p>
+              </div>
+            </div>
+            <button 
+              className="btn-primary" 
+              onClick={() => syncData(true)} 
+              disabled={isSyncing}
+              style={{ padding: '8px 16px', fontSize: '0.85rem' }}
+            >
+              <RefreshCw size={14} style={{ marginRight: '6px' }} className={isSyncing ? 'spin' : ''} />
+              Sync Now
+            </button>
+          </div>
+        </div>
+
+        <div className="info-alert mb-20" style={{ display: 'flex', gap: '12px', background: 'rgba(99,102,241,0.1)', padding: '15px', borderRadius: '12px', border: '1px solid rgba(99,102,241,0.2)' }}>
+          <AlertIcon size={20} className="text-primary" style={{ flexShrink: 0 }} />
+          <p style={{ fontSize: '0.85rem', lineHeight: '1.4' }}>
+            <strong>How it works:</strong> Your data is automatically pushed to the cloud whenever you add or update records. On other devices, simply click <strong>Sync Now</strong> to pull the latest updates.
+          </p>
+        </div>
+
+        <div className="security-note">
+          <p className="text-muted" style={{ fontSize: '0.75rem' }}>
+            Cloud Sync is powered by Supabase. Your data is encrypted in transit and stored securely.
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+
+  const renderReset = () => (
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="glass-card settings-card">
+      <div className="card-header" style={{ borderBottomColor: 'rgba(239,68,68,0.2)' }}>
+        <AlertTriangle className="text-error" size={24} style={{ color: '#ef4444' }} />
+        <h3>Danger Zone: Reset Data</h3>
+      </div>
+      <div className="card-body">
+        <p className="text-muted mb-20">Reset specific datasets or revert the entire system to its default state. This action is **irreversible**. Please download a backup before proceeding.</p>
+        
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          {/* Former Tenants Reset */}
+          <div className="reset-item flex-row align-center justify-between" style={{ padding: '16px', background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-main)' }}>Reset Former Tenants</h4>
+              <p className="text-muted" style={{ margin: 0, fontSize: '0.82rem' }}>Permanently clear all vacated tenants from the former tenants tab.</p>
+            </div>
+            <button 
+              className="btn-secondary text-error" 
+              onClick={async () => {
+                const count = clients.filter(c => c.status === 'Vacated').length;
+                if (count === 0) {
+                  alert("No former tenants found to reset.");
+                  return;
+                }
+                if (window.confirm(`Are you sure you want to permanently delete all ${count} vacated former tenants?`)) {
+                  await resetFormerTenants();
+                  alert("Former tenants cleared successfully!");
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '10px 16px', background: 'rgba(239,68,68,0.05)' }}
+            >
+              <Trash2 size={16} /> WIPE {clients.filter(c => c.status === 'Vacated').length} RECORDS
+            </button>
+          </div>
+
+          {/* Payments Reset */}
+          <div className="reset-item flex-row align-center justify-between" style={{ padding: '16px', background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-main)' }}>Reset Payments & Receipts</h4>
+              <p className="text-muted" style={{ margin: 0, fontSize: '0.82rem' }}>Permanently delete all billing, rent collection, and transaction records.</p>
+            </div>
+            <button 
+              className="btn-secondary text-error" 
+              onClick={async () => {
+                if (payments.length === 0) {
+                  alert("No payment logs found to reset.");
+                  return;
+                }
+                if (window.confirm("CRITICAL WARNING: This will permanently delete all collected rent and payment logs. Are you sure?")) {
+                  await resetAllPayments();
+                  alert("Payment records wiped successfully!");
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '10px 16px', background: 'rgba(239,68,68,0.05)' }}
+            >
+              <Trash2 size={16} /> WIPE {payments.length} PAYMENTS
+            </button>
+          </div>
+
+          {/* Expenses Reset */}
+          <div className="reset-item flex-row align-center justify-between" style={{ padding: '16px', background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-main)' }}>Reset Expenses</h4>
+              <p className="text-muted" style={{ margin: 0, fontSize: '0.82rem' }}>Permanently delete all registered operational expenses and bills.</p>
+            </div>
+            <button 
+              className="btn-secondary text-error" 
+              onClick={async () => {
+                if (expenses.length === 0) {
+                  alert("No expense records found to reset.");
+                  return;
+                }
+                if (window.confirm("Are you sure you want to permanently delete all expense records?")) {
+                  await resetAllExpenses();
+                  alert("Expense records cleared successfully!");
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '10px 16px', background: 'rgba(239,68,68,0.05)' }}
+            >
+              <Trash2 size={16} /> WIPE {expenses.length} EXPENSES
+            </button>
+          </div>
+
+          {/* Active Tenants Reset */}
+          <div className="reset-item flex-row align-center justify-between" style={{ padding: '16px', background: 'rgba(239,68,68,0.03)', border: '1px solid rgba(239,68,68,0.15)', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ margin: '0 0 4px', color: 'var(--text-main)' }}>Reset All Tenants (Active & Former)</h4>
+              <p className="text-muted" style={{ margin: 0, fontSize: '0.82rem' }}>Wipe all active and inactive tenant accounts, agreements, and IDs.</p>
+            </div>
+            <button 
+              className="btn-secondary text-error" 
+              onClick={async () => {
+                if (clients.length === 0) {
+                  alert("No tenant records found to reset.");
+                  return;
+                }
+                if (window.confirm("CRITICAL WARNING: This will permanently delete ALL active tenants AND vacated tenants. This cannot be undone. Proceed?")) {
+                  await resetAllClients();
+                  alert("All tenant records cleared successfully!");
+                }
+              }}
+              style={{ display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '10px 16px', background: 'rgba(239,68,68,0.05)' }}
+            >
+              <Trash2 size={16} /> WIPE {clients.length} TENANTS
+            </button>
+          </div>
+
+          {/* Full System Reset */}
+          <div className="reset-item flex-row align-center justify-between" style={{ padding: '20px', background: 'rgba(239,68,68,0.06)', border: '2px dashed #ef4444', borderRadius: '12px', display: 'flex', flexWrap: 'wrap', gap: '16px', marginTop: '10px' }}>
+            <div style={{ flex: '1 1 300px' }}>
+              <h4 style={{ margin: '0 0 4px', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertTriangle size={18} /> FULL FACTORY RESET
+              </h4>
+              <p className="text-muted" style={{ margin: 0, fontSize: '0.82rem' }}>Deletes all tenants, payments, expenses, activity logs, and resets user profiles to default.</p>
+            </div>
+            <button 
+              className="btn-primary" 
+              onClick={async () => {
+                const conf1 = window.confirm("EXTREME DANGER: Are you sure you want to restore the application to its original empty state? This will completely wipe all data on the cloud and locally.");
+                if (conf1) {
+                  const conf2 = window.confirm("Double Confirmation Required: To proceed with Factory Reset, please confirm that you understand this will log you out and clear all credentials.");
+                  if (conf2) {
+                    await resetCompleteSystem();
+                  }
+                }
+              }}
+              style={{ background: '#ef4444', borderColor: '#ef4444', boxShadow: '0 4px 12px rgba(239, 68, 68, 0.3)', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', padding: '12px 20px' }}
+            >
+              <RotateCcw size={16} /> PERFORM SYSTEM RESET
+            </button>
+          </div>
+        </div>
+      </div>
+    </motion.div>
+  );
+
   return (
     <div className="settings-page">
       <div className="page-header mb-20">
@@ -208,19 +399,27 @@ const Settings = () => {
           <button className={activeTab === 'general' ? 'active' : ''} onClick={() => setActiveTab('general')}>
             <SettingsIcon size={18} /> General
           </button>
+          <button className={activeTab === 'cloud' ? 'active' : ''} onClick={() => setActiveTab('cloud')}>
+            <Cloud size={18} /> Cloud Sync
+          </button>
           <button className={activeTab === 'users' ? 'active' : ''} onClick={() => setActiveTab('users')}>
             <ShieldCheck size={18} /> User Management
           </button>
           <button className={activeTab === 'logs' ? 'active' : ''} onClick={() => setActiveTab('logs')}>
             <Activity size={18} /> Activity Logs
           </button>
+          <button className={activeTab === 'reset' ? 'active' : ''} onClick={() => setActiveTab('reset')} style={{ color: activeTab === 'reset' ? '#fff' : '#ef4444' }}>
+            <RotateCcw size={18} /> Reset Data
+          </button>
         </div>
 
         <div className="settings-content mt-20">
           <AnimatePresence mode="wait">
             {activeTab === 'general' && renderGeneral()}
+            {activeTab === 'cloud' && renderCloud()}
             {activeTab === 'users' && renderUsers()}
             {activeTab === 'logs' && renderLogs()}
+            {activeTab === 'reset' && renderReset()}
           </AnimatePresence>
         </div>
       </div>
@@ -245,6 +444,9 @@ const Settings = () => {
         .user-info { display: flex; align-items: center; gap: 12px; }
         .text-error { color: #ef4444; }
         
+        .spin { animation: spin 1s linear infinite; }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
         @media (max-width: 768px) {
           .settings-tabs { width: 100%; overflow-x: auto; }
         }
@@ -254,3 +456,4 @@ const Settings = () => {
 };
 
 export default Settings;
+

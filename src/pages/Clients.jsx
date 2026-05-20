@@ -1,13 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useNavigate } from 'react-router-dom';
-import { Plus, User, FileText, Upload, Trash2, Search, Eye, Edit3, ArrowLeft, LogOut, Printer, Download, UserX } from 'lucide-react';
+import { Plus, User, FileText, Upload, Trash2, Search, Eye, Edit3, ArrowLeft, LogOut, Printer, Download, UserX, Camera } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 
 const Clients = () => {
-  const { clients, addClient, updateClient, toggleClientStatus, deleteClient, payments } = useApp();
+  const { clients, addClient, updateClient, toggleClientStatus, deleteClient, payments, properties } = useApp();
   const navigate = useNavigate();
   const [viewMode, setViewMode] = useState(null); // 'add', 'edit', 'view'
   const [profileTab, setProfileTab] = useState('profile');
@@ -15,6 +15,64 @@ const Clients = () => {
   const [selectedClient, setSelectedClient] = useState(null);
   const [vacateConfirm, setVacateConfirm] = useState(null); // holds client id to vacate
   const downloadRef = useRef(null);
+  const [activeImageLightbox, setActiveImageLightbox] = useState(null);
+
+  const getExtensionFromDataUrl = (dataUrl, fallback = 'jpg') => {
+    if (!dataUrl) return fallback;
+    const match = dataUrl.match(/^data:([^;]+);/);
+    if (!match) return fallback;
+    const mimeType = match[1];
+    const parts = mimeType.split('/');
+    if (parts.length === 2) {
+      const ext = parts[1];
+      if (ext === 'jpeg') return 'jpg';
+      return ext;
+    }
+    return fallback;
+  };
+
+  const downloadFile = (dataUrl, filename) => {
+    if (!dataUrl) return;
+    const link = document.createElement('a');
+    link.href = dataUrl;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const downloadAttachedDocuments = () => {
+    if (!selectedClient) return;
+    const safeName = selectedClient.name.replace(/ /g, '_');
+    
+    // 1. Download Photo
+    if (selectedClient.photo) {
+      downloadFile(selectedClient.photo, `Tenant_${safeName}_Photo.${getExtensionFromDataUrl(selectedClient.photo)}`);
+    }
+    
+    // 2. Download ID Card
+    if (selectedClient.idCard) {
+      downloadFile(selectedClient.idCard, `Tenant_${safeName}_ID_Card.${getExtensionFromDataUrl(selectedClient.idCard)}`);
+    }
+    
+    // 3. Download Agreement Copy
+    if (selectedClient.agreement) {
+      downloadFile(selectedClient.agreement, `Tenant_${safeName}_Agreement.${getExtensionFromDataUrl(selectedClient.agreement)}`);
+    }
+    
+    // 4. Download additional documents
+    if (selectedClient.documents && selectedClient.documents.length > 0) {
+      selectedClient.documents.forEach((doc, idx) => {
+        if (typeof doc === 'string') {
+          downloadFile(doc, `Tenant_${safeName}_Doc_${idx + 1}.${getExtensionFromDataUrl(doc)}`);
+        } else if (doc && doc.data) {
+          let name = doc.name || `Tenant_${safeName}_Doc_${idx + 1}.${getExtensionFromDataUrl(doc.data)}`;
+          downloadFile(doc.data, name);
+        }
+      });
+    }
+  };
+
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
@@ -24,6 +82,7 @@ const Clients = () => {
     address: '',
     rentAmount: '',
     deposit: '',
+    propertyUnit: '',
     agreementDate: new Date().toISOString().split('T')[0],
     photo: null,
     idCard: null,
@@ -53,6 +112,7 @@ const Clients = () => {
     setFormData({
       name: '', phone: '', email: '', idType: 'Aadhar', 
       idNumber: '', address: '', rentAmount: '', deposit: '',
+      propertyUnit: '',
       agreementDate: new Date().toISOString().split('T')[0],
       photo: null,
       idCard: null,
@@ -212,6 +272,7 @@ const Clients = () => {
                       <option>PAN Card</option>
                       <option>Voter ID</option>
                       <option>Passport</option>
+                      <option>Driving Licence</option>
                     </select>
                   </div>
                 </div>
@@ -221,7 +282,34 @@ const Clients = () => {
                   <textarea rows="2" value={formData.address} onChange={e => setFormData({...formData, address: e.target.value})}></textarea>
                 </div>
 
-                <div className="grid-2">
+                <div className="input-group">
+                  <label>Assigned Property Unit</label>
+                  <select 
+                    value={formData.propertyUnit || ''} 
+                    onChange={e => {
+                      const unit = e.target.value;
+                      const selectedProp = properties.find(p => p.unit_number === unit);
+                      setFormData(prev => ({
+                        ...prev,
+                        propertyUnit: unit,
+                        rentAmount: selectedProp ? selectedProp.rent.toString() : prev.rentAmount,
+                        deposit: selectedProp ? selectedProp.deposit.toString() : prev.deposit
+                      }));
+                    }}
+                  >
+                    <option value="">-- Select Unit (Optional) --</option>
+                    {properties
+                      .filter(p => p.status === 'Vacant' || p.unit_number === (selectedClient?.propertyUnit || ''))
+                      .map(p => (
+                        <option key={p.id} value={p.unit_number}>
+                          {p.unit_number} ({p.type} - Floor {p.floor}) - Rent: ₹{p.rent}
+                        </option>
+                      ))
+                    }
+                  </select>
+                </div>
+
+                <div className="grid-2 mt-10">
                   <div className="input-group">
                     <label>Monthly Rent (₹)</label>
                     <input required type="number" value={formData.rentAmount} onChange={e => setFormData({...formData, rentAmount: e.target.value})} />
@@ -241,13 +329,25 @@ const Clients = () => {
                     <label>Agreement Copy</label>
                     <div className="image-upload-box" style={{ height: '70px' }}>
                       {previews.agreement ? (
-                        <img src={previews.agreement} alt="Preview" className="preview-img" />
+                        <>
+                          {typeof previews.agreement === 'string' && previews.agreement.startsWith('data:application/pdf') ? (
+                            <div className="pdf-preview-box" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', width: '100%', height: '100%', color: '#ef4444', gap: '4px' }}>
+                              <FileText size={24} />
+                              <span style={{ fontSize: '0.75rem', fontWeight: '500' }}>Agreement PDF</span>
+                            </div>
+                          ) : (
+                            <img src={previews.agreement} alt="Preview" className="preview-img" />
+                          )}
+                          <div className="image-upload-overlay" style={{ right: '8px', bottom: '8px', width: '28px', height: '28px' }}>
+                            <Camera size={14} />
+                          </div>
+                        </>
                       ) : (
                         <div className="placeholder">
                           <span>Upload Agreement</span>
                         </div>
                       )}
-                      <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'agreement')} />
+                      <input type="file" accept="image/*,.pdf" onChange={e => handleImageUpload(e, 'agreement')} />
                     </div>
                   </div>
                 </div>
@@ -257,21 +357,31 @@ const Clients = () => {
                     <label>Tenant Photo</label>
                     <div className="image-upload-box">
                       {previews.photo ? (
-                        <img src={previews.photo} alt="Preview" className="preview-img" />
+                        <>
+                          <img src={previews.photo} alt="Preview" className="preview-img" />
+                          <div className="image-upload-overlay">
+                            <Camera size={18} />
+                          </div>
+                        </>
                       ) : (
                         <div className="placeholder">
-                          <User size={32} />
+                          <Camera size={32} />
                           <span>Upload Photo</span>
                         </div>
                       )}
-                      <input type="file" accept="image/*" onChange={e => handleImageUpload(e, 'photo')} />
+                      <input type="file" accept="image/*" capture="user" onChange={e => handleImageUpload(e, 'photo')} />
                     </div>
                   </div>
                   <div className="input-group">
                     <label>ID Card Copy (Front/Back)</label>
                     <div className="image-upload-box">
                       {previews.idCard ? (
-                        <img src={previews.idCard} alt="Preview" className="preview-img" />
+                        <>
+                          <img src={previews.idCard} alt="Preview" className="preview-img" />
+                          <div className="image-upload-overlay">
+                            <Camera size={18} />
+                          </div>
+                        </>
                       ) : (
                         <div className="placeholder">
                           <FileText size={32} />
@@ -335,7 +445,12 @@ const Clients = () => {
                   <div className="profile-aside">
                     <div className="profile-photo-large">
                       {selectedClient.photo ? (
-                        <img src={selectedClient.photo} alt={selectedClient.name} />
+                        <img 
+                          src={selectedClient.photo} 
+                          alt={selectedClient.name} 
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => setActiveImageLightbox({ src: selectedClient.photo, title: `${selectedClient.name} - Photo` })}
+                        />
                       ) : (
                         <div className="photo-placeholder"><User size={64} /></div>
                       )}
@@ -343,6 +458,11 @@ const Clients = () => {
                     <div className="profile-main-info mt-20">
                       <h3>{selectedClient.name}</h3>
                       <p className="text-muted">{selectedClient.idType}: {selectedClient.idNumber || 'N/A'}</p>
+                      {selectedClient.propertyUnit && (
+                        <p style={{ marginTop: '8px', color: 'var(--primary)', fontWeight: '600' }}>
+                          Unit: {selectedClient.propertyUnit}
+                        </p>
+                      )}
                     </div>
                     <div className="rent-badge mt-20">
                       <p>Monthly Rent</p>
@@ -370,7 +490,13 @@ const Clients = () => {
                       <h4>ID Verification</h4>
                       <div className="id-card-view">
                         {selectedClient.idCard ? (
-                          <img src={selectedClient.idCard} alt="ID Card" className="id-img" />
+                          <img 
+                            src={selectedClient.idCard} 
+                            alt="ID Card" 
+                            className="id-img" 
+                            style={{ cursor: 'pointer' }}
+                            onClick={() => setActiveImageLightbox({ src: selectedClient.idCard, title: `${selectedClient.name} - ID Card` })}
+                          />
                         ) : (
                           <div className="no-id">No ID image uploaded</div>
                         )}
@@ -382,14 +508,90 @@ const Clients = () => {
                       <div className="detail-item"><label>Agreement Date</label><p>{selectedClient.agreementDate}</p></div>
                       {selectedClient.agreement && (
                         <div className="id-card-view mt-10" style={{ marginBottom: '16px' }}>
-                          <img src={selectedClient.agreement} alt="Agreement" className="id-img" />
+                          {selectedClient.agreement.startsWith('data:application/pdf') ? (
+                            <div className="pdf-preview-card" style={{ display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', padding: '14px', borderRadius: '10px' }}>
+                              <FileText size={28} className="text-danger" style={{ color: '#ef4444' }} />
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.88rem', fontWeight: '600', color: '#1e293b' }}>Agreement Document.pdf</div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b' }}>PDF Document File</div>
+                              </div>
+                              <button 
+                                className="btn-secondary" 
+                                style={{ padding: '6px 12px', fontSize: '0.78rem' }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  downloadFile(selectedClient.agreement, `Tenant_${selectedClient.name.replace(/ /g, '_')}_Agreement.pdf`);
+                                }}
+                              >
+                                <Download size={14} /> Download PDF
+                              </button>
+                            </div>
+                          ) : (
+                            <img 
+                              src={selectedClient.agreement} 
+                              alt="Agreement" 
+                              className="id-img" 
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => setActiveImageLightbox({ src: selectedClient.agreement, title: `${selectedClient.name} - Agreement Copy` })}
+                            />
+                          )}
                         </div>
                       )}
                       <div className="doc-list mt-10">
                         {selectedClient.documents.length > 0 ? (
-                          selectedClient.documents.map((doc, i) => (
-                            <div key={i} className="doc-item"><FileText size={18} /><span>{typeof doc === 'string' ? doc : doc.name}</span></div>
-                          ))
+                          selectedClient.documents.map((doc, i) => {
+                            const name = typeof doc === 'string' ? doc : doc.name;
+                            const isImage = typeof doc === 'object' && doc.data && doc.data.startsWith('data:image/');
+                            const isPdf = typeof doc === 'object' && doc.data && doc.data.startsWith('data:application/pdf');
+                            
+                            return (
+                              <div 
+                                key={i} 
+                                className="doc-item" 
+                                style={{ 
+                                  cursor: (isImage || isPdf) ? 'pointer' : 'default',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '8px',
+                                  transition: 'all 0.2s',
+                                  padding: '10px 14px',
+                                  borderRadius: '8px',
+                                  border: '1px solid var(--glass-border)',
+                                  background: 'var(--glass)'
+                                }}
+                                onClick={() => {
+                                  if (isImage) {
+                                    setActiveImageLightbox({ src: doc.data, title: name });
+                                  } else if (isPdf) {
+                                    const link = document.createElement('a');
+                                    link.href = doc.data;
+                                    link.target = '_blank';
+                                    link.click();
+                                  }
+                                }}
+                                onMouseEnter={(e) => {
+                                  if (isImage || isPdf) {
+                                    e.currentTarget.style.borderColor = 'var(--primary)';
+                                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                                  }
+                                }}
+                                onMouseLeave={(e) => {
+                                  if (isImage || isPdf) {
+                                    e.currentTarget.style.borderColor = 'var(--glass-border)';
+                                    e.currentTarget.style.background = 'var(--glass)';
+                                  }
+                                }}
+                              >
+                                <FileText size={18} style={{ color: isPdf ? '#ef4444' : isImage ? '#3b82f6' : 'var(--text-muted)' }} />
+                                <span style={{ flex: 1, fontWeight: '500' }}>{name}</span>
+                                {(isImage || isPdf) && (
+                                  <span style={{ fontSize: '0.72rem', color: 'var(--primary)', fontWeight: '600' }}>
+                                    {isImage ? 'Click to View' : 'Click to Open'}
+                                  </span>
+                                )}
+                              </div>
+                            );
+                          })
                         ) : (
                           <p className="text-muted">No additional documents</p>
                         )}
@@ -462,6 +664,21 @@ const Clients = () => {
                       </div>
                     )}
 
+                    {/* Agreement Copy */}
+                    {selectedClient.agreement && (
+                      <div style={{ marginBottom: '24px' }}>
+                        <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Agreement Copy</div>
+                        {selectedClient.agreement.startsWith('data:application/pdf') ? (
+                          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '12px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.88rem', color: '#475569' }}>
+                            <FileText size={18} style={{ color: '#ef4444' }} />
+                            <span>Agreement Document (PDF File Attached)</span>
+                          </div>
+                        ) : (
+                          <img src={selectedClient.agreement} alt="Agreement" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'block' }} />
+                        )}
+                      </div>
+                    )}
+
                     {/* Documents */}
                     {selectedClient.documents.length > 0 && (
                       <div style={{ marginBottom: '20px' }}>
@@ -471,12 +688,6 @@ const Clients = () => {
                             <span key={i} style={{ background: '#eff6ff', color: '#3b82f6', padding: '4px 12px', borderRadius: '6px', fontSize: '0.82rem', border: '1px solid #bfdbfe' }}>{typeof d === 'string' ? d : d.name}</span>
                           ))}
                         </div>
-                        {selectedClient.agreement && (
-                          <div style={{ marginBottom: '16px' }}>
-                            <div style={{ fontSize: '0.72rem', color: '#94a3b8', textTransform: 'uppercase', marginBottom: '8px', letterSpacing: '0.5px' }}>Agreement Copy</div>
-                            <img src={selectedClient.agreement} alt="Agreement" style={{ width: '100%', maxHeight: '400px', objectFit: 'contain', borderRadius: '8px', border: '1px solid #e2e8f0', display: 'block' }} />
-                          </div>
-                        )}
                         <div id="documents-images-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                           {selectedClient.documents.map((d, i) => (
                             typeof d === 'object' && d.data && d.data.startsWith('data:image/') ? (
@@ -540,6 +751,7 @@ const Clients = () => {
                         }
                         
                         pdf.save(`Tenant_${selectedClient.name.replace(/ /g,'_')}.pdf`);
+                        downloadAttachedDocuments();
                       } finally {
                         if (modalContent) {
                           modalContent.style.maxHeight = originalMaxHeight;
@@ -597,6 +809,7 @@ const Clients = () => {
                   <th style={{ width: '50px' }}>#</th>
                   <th>Tenant Name</th>
                   <th>Contact</th>
+                  <th>Unit</th>
                   <th>Rent</th>
                   <th>Agreement</th>
                   <th>Documents</th>
@@ -622,6 +835,15 @@ const Clients = () => {
                     <td>
                       <p>{client.phone}</p>
                       <small className="text-muted">{client.email}</small>
+                    </td>
+                    <td>
+                      {client.propertyUnit ? (
+                        <span className="badge" style={{ background: 'rgba(99,102,241,0.15)', color: '#818cf8', padding: '4px 8px', borderRadius: '6px', fontWeight: '600' }}>
+                          {client.propertyUnit}
+                        </span>
+                      ) : (
+                        <span className="text-muted">—</span>
+                      )}
                     </td>
                     <td>₹{client.rentAmount}</td>
                     <td>{client.agreementDate}</td>
@@ -649,6 +871,111 @@ const Clients = () => {
           </div>
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      <AnimatePresence>
+        {activeImageLightbox && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="modal-overlay"
+            style={{ 
+              zIndex: 9999, 
+              backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+              backdropFilter: 'blur(12px)',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px'
+            }}
+            onClick={() => setActiveImageLightbox(null)}
+          >
+            <div 
+              style={{ 
+                position: 'absolute', 
+                top: '20px', 
+                right: '20px', 
+                display: 'flex', 
+                gap: '12px',
+                zIndex: 10000 
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <button 
+                className="btn-secondary" 
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.1)', 
+                  border: '1px solid rgba(255, 255, 255, 0.2)', 
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: 0
+                }}
+                onClick={() => downloadFile(activeImageLightbox.src, activeImageLightbox.title.replace(/ /g, '_') + '.' + getExtensionFromDataUrl(activeImageLightbox.src))}
+              >
+                <Download size={18} />
+              </button>
+              <button 
+                className="btn-secondary" 
+                style={{ 
+                  background: 'rgba(255, 255, 255, 0.1)', 
+                  border: '1px solid rgba(255, 255, 255, 0.2)', 
+                  color: '#fff',
+                  borderRadius: '50%',
+                  width: '40px',
+                  height: '40px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '24px',
+                  padding: 0,
+                  lineHeight: '40px'
+                }}
+                onClick={() => setActiveImageLightbox(null)}
+              >
+                &times;
+              </button>
+            </div>
+            
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              style={{ 
+                maxWidth: '90%', 
+                maxHeight: '80%', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                gap: '16px' 
+              }}
+              onClick={e => e.stopPropagation()}
+            >
+              <img 
+                src={activeImageLightbox.src} 
+                alt={activeImageLightbox.title} 
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '75vh', 
+                  objectFit: 'contain', 
+                  borderRadius: '12px', 
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)'
+                }} 
+              />
+              <div style={{ textAlign: 'center', color: '#fff' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: '600', textShadow: '0 2px 4px rgba(0,0,0,0.5)' }}>{activeImageLightbox.title}</h3>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <style>{`
         .page-header { display: flex; justify-content: space-between; gap: 20px; margin-bottom: 24px; }
@@ -715,6 +1042,28 @@ const Clients = () => {
         .image-upload-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
         .image-upload-box .placeholder { display: flex; flex-direction: column; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem; }
         .preview-img { width: 100%; height: 100%; object-fit: cover; }
+        .image-upload-overlay {
+          position: absolute;
+          right: 12px;
+          bottom: 12px;
+          background: rgba(15, 23, 42, 0.85);
+          border: 1px solid var(--glass-border);
+          color: white;
+          width: 32px;
+          height: 32px;
+          border-radius: 50%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          pointer-events: none;
+          z-index: 1;
+          transition: all 0.3s ease;
+        }
+        .image-upload-box:hover .image-upload-overlay {
+          background: var(--primary);
+          border-color: var(--primary-hover);
+          transform: scale(1.1);
+        }
         
         .avatar.sm { width: 40px; height: 40px; border-radius: 10px; object-fit: cover; background: var(--glass); }
 

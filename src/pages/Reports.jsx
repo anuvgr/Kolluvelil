@@ -482,7 +482,7 @@ const Reports = () => {
                     <div className="former-docs">
                       <label>Documents</label>
                       <div className="doc-tags">
-                        {c.documents.map((d, i) => <span key={i} className="doc-tag">{d}</span>)}
+                        {c.documents.map((d, i) => <span key={i} className="doc-tag">{typeof d === 'string' ? d : d.name}</span>)}
                       </div>
                     </div>
                   )}

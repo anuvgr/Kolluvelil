@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, BarChart3, Home, TrendingDown, UserX, ChevronDown, ChevronRight, FileBarChart, Calendar, AlertCircle, Wallet, PieChart, User, List, Settings as SettingsIcon, LogOut } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, BarChart3, Home, TrendingDown, UserX, ChevronDown, ChevronRight, FileBarChart, Calendar, AlertCircle, Wallet, PieChart, User, List, Settings as SettingsIcon, LogOut, RefreshCw, Sun, Moon, Building } from 'lucide-react';
 import { AppProvider, useApp } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
@@ -10,6 +10,7 @@ import Reports from './pages/Reports';
 import FormerTenants from './pages/FormerTenants';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
+import Properties from './pages/Properties';
 
 const SidebarItem = ({ to, icon: Icon, label }) => {
   const location = useLocation();
@@ -28,7 +29,15 @@ const SidebarItem = ({ to, icon: Icon, label }) => {
 
 const AppContent = () => {
   const [reportsOpen, setReportsOpen] = useState(false);
-  const { currentUser, logout } = useApp();
+  const { currentUser, logout, isSyncing, lastSync, syncData } = useApp();
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('rental_theme') || 'dark';
+  });
+
+  React.useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('rental_theme', theme);
+  }, [theme]);
 
   const reportSubItems = [
     { label: 'Financial Summary', tab: 'summary',    icon: FileBarChart },
@@ -55,6 +64,7 @@ const AppContent = () => {
             <nav>
               <SidebarItem to="/" icon={LayoutDashboard} label="Dashboard" />
               <SidebarItem to="/clients" icon={Users} label="Clients" />
+              <SidebarItem to="/properties" icon={Building} label="Properties" />
               <SidebarItem to="/payments" icon={CreditCard} label="Payments" />
               <SidebarItem to="/expenses" icon={TrendingDown} label="Expenses" />
 
@@ -92,7 +102,25 @@ const AppContent = () => {
           
           <main className="main-content">
             <header className="top-bar glass-card">
-              <h1>Rental Management System</h1>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <h1>Rental Management System</h1>
+                <button 
+                  onClick={() => syncData(true)} 
+                  className={`icon-btn ${isSyncing ? 'spin' : ''}`} 
+                  title={lastSync ? `Last synced: ${new Date(lastSync).toLocaleTimeString()}` : 'Click to Sync'}
+                  style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary)', border: '1px solid rgba(99,102,241,0.2)' }}
+                >
+                  <RefreshCw size={16} className={isSyncing ? 'spin' : ''} />
+                </button>
+                <button 
+                  onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+                  className="icon-btn" 
+                  title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                  style={{ background: 'rgba(99,102,241,0.1)', color: 'var(--primary)', border: '1px solid rgba(99,102,241,0.2)' }}
+                >
+                  {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+                </button>
+              </div>
               <div className="user-profile">
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', marginRight: '4px' }}>
                   <span style={{ fontWeight: '600' }}>{currentUser.username}</span>
@@ -111,6 +139,7 @@ const AppContent = () => {
               <Routes>
                 <Route path="/" element={<Dashboard />} />
                 <Route path="/clients" element={<Clients />} />
+                <Route path="/properties" element={<Properties />} />
                 <Route path="/payments" element={<Payments />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />
@@ -170,7 +199,7 @@ const AppContent = () => {
           }
 
           .sidebar-item:hover {
-            background: rgba(255, 255, 255, 0.05);
+            background: var(--glass);
             color: var(--text-main);
           }
 
@@ -231,8 +260,8 @@ const AppContent = () => {
             cursor: pointer;
             text-align: left;
           }
-          .sidebar-group-toggle:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
-          .sidebar-group-toggle.group-open { color: var(--text-main); background: rgba(255,255,255,0.04); }
+          .sidebar-group-toggle:hover { background: var(--glass); color: var(--text-main); }
+          .sidebar-group-toggle.group-open { color: var(--text-main); background: var(--glass); }
           .sidebar-group-toggle .chevron { margin-left: auto; }
 
           .sub-items {
@@ -256,7 +285,7 @@ const AppContent = () => {
             font-size: 0.88rem;
             font-weight: 500;
           }
-          .sidebar-sub-item:hover { background: rgba(255,255,255,0.06); color: var(--text-main); }
+          .sidebar-sub-item:hover { background: var(--glass); color: var(--text-main); }
           .sidebar-sub-item.active { background: rgba(99,102,241,0.15); color: var(--primary); }
 
           @media (max-width: 1024px) {
@@ -272,7 +301,7 @@ const AppContent = () => {
               position: fixed; bottom: 0; left: 0; width: 100%; height: 75px; 
               flex-direction: row; padding: 0; border-radius: 0; 
               border-top: 1px solid var(--glass-border); z-index: 1000; 
-              background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(20px);
+              background: var(--sidebar-bg-mobile); backdrop-filter: blur(20px);
             }
             .logo { display: none; }
             nav { flex-direction: row; width: 100%; overflow-x: auto; align-items: center; gap: 10px; padding: 0 10px; }

@@ -94,7 +94,7 @@ const FormerTenants = () => {
                     <div className="doc-tags">
                       {c.documents.map((d, i) => (
                         <span key={i} className="doc-tag">
-                          <FileText size={12} style={{ display: 'inline', marginRight: '4px' }} />{d}
+                          <FileText size={12} style={{ display: 'inline', marginRight: '4px' }} />{typeof d === 'string' ? d : d.name}
                         </span>
                       ))}
                     </div>

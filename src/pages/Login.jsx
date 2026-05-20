@@ -79,9 +79,7 @@ const Login = () => {
           justify-content: center;
           padding: 20px;
           background-color: var(--bg-dark);
-          background-image:
-            radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
-            radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.1) 0px, transparent 50%);
+          background-image: var(--bg-gradient);
         }
         .login-card {
           width: 100%;

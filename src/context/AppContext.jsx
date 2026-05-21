@@ -394,7 +394,7 @@ export const AppProvider = ({ children }) => {
   };
 
   const login = (username, password) => {
-    const user = users.find(u => u.username === username && u.password === password);
+    const user = users.find(u => u.username.toLowerCase() === username.toLowerCase() && u.password === password);
     if (user) {
       setCurrentUser(user);
       localStorage.setItem('rental_current_user', JSON.stringify(user));

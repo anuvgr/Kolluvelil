@@ -65,7 +65,6 @@ const AppContent = () => {
   }
 
   return (
-    <Router>
       <div className="app-container">
         <aside className="sidebar glass-card">
             <div className="logo">
@@ -164,189 +163,17 @@ const AppContent = () => {
           </main>
         </div>
 
-        <style>{`
-          .app-container {
-            display: flex;
-            min-height: 100vh;
-            padding: 20px;
-            gap: 20px;
-          }
 
-          .sidebar {
-            width: 280px;
-            height: calc(100vh - 40px);
-            position: sticky;
-            top: 20px;
-            display: flex;
-            flex-direction: column;
-            padding: 30px 20px;
-          }
-
-          .logo {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 40px;
-            padding-left: 10px;
-          }
-
-          .logo-icon {
-            color: var(--primary);
-          }
-
-          nav {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-          }
-
-          .sidebar-item {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            text-decoration: none;
-            color: var(--text-muted);
-            border-radius: 12px;
-            transition: all 0.3s;
-            font-weight: 500;
-          }
-
-          .sidebar-item:hover {
-            background: var(--glass);
-            color: var(--text-main);
-          }
-
-          .sidebar-item.active {
-            background: linear-gradient(135deg, var(--primary), var(--accent));
-            color: white;
-            box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
-          }
-
-          .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-          }
-
-          .top-bar {
-            height: 80px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 0 30px;
-          }
-
-          .user-profile {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-          }
-
-          .avatar {
-            width: 40px;
-            height: 40px;
-            background: linear-gradient(45deg, var(--primary), var(--secondary));
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-          }
-
-          .page-content {
-            flex: 1;
-          }
-
-          .sidebar-group { display: flex; flex-direction: column; }
-          .sidebar-group-toggle {
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 16px;
-            text-decoration: none;
-            color: var(--text-muted);
-            border-radius: 12px;
-            transition: all 0.3s;
-            font-weight: 500;
-            background: transparent;
-            cursor: pointer;
-            text-align: left;
-          }
-          .sidebar-group-toggle:hover { background: var(--glass); color: var(--text-main); }
-          .sidebar-group-toggle.group-open { color: var(--text-main); background: var(--glass); }
-          .sidebar-group-toggle .chevron { margin-left: auto; }
-
-          .sub-items {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            margin-left: 16px;
-            padding-left: 12px;
-            border-left: 2px solid rgba(99,102,241,0.3);
-            margin-bottom: 4px;
-          }
-          .sidebar-sub-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 9px 12px;
-            text-decoration: none;
-            color: var(--text-muted);
-            border-radius: 8px;
-            transition: all 0.2s;
-            font-size: 0.88rem;
-            font-weight: 500;
-          }
-          .sidebar-sub-item:hover { background: var(--glass); color: var(--text-main); }
-          .sidebar-sub-item.active { background: rgba(99,102,241,0.15); color: var(--primary); }
-
-          @media (max-width: 1024px) {
-            .sidebar { width: 80px; padding: 20px 10px; }
-            .sidebar span, .logo h2 { display: none; }
-            .logo { justify-content: center; padding: 0; }
-            .sub-items { display: none; } /* hide sub-items on medium screens */
-          }
-
-          @media (max-width: 768px) {
-            .app-container { flex-direction: column; padding: 10px; gap: 10px; padding-bottom: 90px; }
-            .sidebar { 
-              position: fixed; bottom: 0; left: 0; width: 100%; height: 75px; 
-              flex-direction: row; padding: 0; border-radius: 0; 
-              border-top: 1px solid var(--glass-border); z-index: 1000; 
-              background: var(--sidebar-bg-mobile); backdrop-filter: blur(20px);
-            }
-            .logo { display: none; }
-            nav { flex-direction: row; width: 100%; overflow-x: auto; align-items: center; gap: 10px; padding: 0 10px; }
-            nav::-webkit-scrollbar { display: none; }
-            .sidebar-item { 
-              flex-direction: column; padding: 8px; gap: 4px; border-radius: 8px; 
-              min-width: 70px; justify-content: center; flex-shrink: 0;
-            }
-            .sidebar-item span { display: block !important; font-size: 0.65rem; text-align: center; }
-            .sidebar-group-toggle span { display: none !important; }
-            .sidebar-group-toggle .chevron { display: none; }
-            .sidebar-group { flex-shrink: 0; }
-            .sub-items {
-              position: absolute; bottom: 80px; left: 0; background: var(--bg-card); 
-              backdrop-filter: blur(12px); border: 1px solid var(--glass-border);
-              padding: 10px; border-radius: 12px; display: flex; flex-direction: column;
-            }
-            .top-bar { height: 60px; padding: 0 15px; }
-            .top-bar h1 { font-size: 1.1rem; }
-            .user-profile span { display: none; }
-          }
-        `}</style>
-      </Router>
   );
 }
 
 function App() {
   return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+    <Router>
+      <AppProvider>
+        <AppContent />
+      </AppProvider>
+    </Router>
   );
 }
 

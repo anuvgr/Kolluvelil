@@ -1,8 +1,53 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
 import { Plus, Search, Edit3, Trash2, Building, CheckCircle2, AlertCircle, Home, User, History } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useMotionValue, useTransform, animate } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+
+const AnimatedCounter = ({ from = 0, to, duration = 1.5, format }) => {
+  const count = useMotionValue(from);
+  const rounded = useTransform(count, latest => {
+    const val = Math.round(latest);
+    return format ? format(val) : val;
+  });
+
+  useEffect(() => {
+    const animation = animate(count, to, { duration, ease: "easeOut" });
+    return animation.stop;
+  }, [count, to, duration]);
+
+  return <motion.span>{rounded}</motion.span>;
+};
+
+const StatCard = ({ icon: Icon, label, value, trend, gradient, onClick, isCurrency }) => (
+  <motion.div 
+    whileHover={{ y: -5, scale: onClick ? 1.02 : 1 }}
+    whileTap={{ scale: onClick ? 0.98 : 1 }}
+    className={`stat-card colorful-kpi ${onClick ? 'clickable' : ''}`}
+    onClick={onClick}
+    style={{ cursor: onClick ? 'pointer' : 'default', background: gradient }}
+  >
+    <div className="stat-content">
+      <div className="stat-info">
+        <p>{label}</p>
+        <h3>
+          {isCurrency && "₹"}
+          <AnimatedCounter 
+            from={0} 
+            to={typeof value === 'string' ? parseFloat(value.replace(/,/g, '')) : value} 
+            format={v => isCurrency ? v.toLocaleString() : v} 
+          />
+          {typeof value === 'string' && value.includes('%') && "%"}
+        </h3>
+        {trend && <span className="trend">{trend}</span>}
+      </div>
+      <div className="icon-box-colorful">
+        <Icon size={32} />
+      </div>
+    </div>
+  </motion.div>
+);
 
 const Properties = () => {
   const { properties, addProperty, updateProperty, deleteProperty, clients } = useApp();
@@ -83,39 +128,64 @@ const Properties = () => {
   const vacantUnits = properties.filter(p => p.status === 'Vacant').length;
   const occupancyRate = totalUnits > 0 ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
 
+  // Calculate property types data for chart
+  const propertyTypesCount = properties.reduce((acc, p) => {
+    acc[p.type] = (acc[p.type] || 0) + 1;
+    return acc;
+  }, {});
+  
+  const chartData = Object.keys(propertyTypesCount).map(type => ({
+    name: type,
+    count: propertyTypesCount[type]
+  }));
+
   return (
-    <div className="properties-page">
+    <div className="properties-page animate-in">
       {/* Stats Header Grid */}
       <div className="stats-grid">
-        <div className="glass-card stat-card">
-          <div className="icon-box blue">
-            <Building size={24} />
-          </div>
-          <div className="stat-info">
-            <p>Total Units</p>
-            <h3>{totalUnits}</h3>
-            <span className="trend">Across all floors</span>
-          </div>
+        <StatCard 
+          icon={Building} 
+          label="Total Units" 
+          value={totalUnits} 
+          trend="Across all floors" 
+          gradient="linear-gradient(135deg, #3b82f6 0%, #1e40af 100%)" 
+        />
+        <StatCard 
+          icon={CheckCircle2} 
+          label="Occupied Units" 
+          value={occupiedUnits} 
+          trend={`${occupancyRate}% Occupancy`} 
+          gradient="linear-gradient(135deg, #10b981 0%, #047857 100%)" 
+        />
+        <StatCard 
+          icon={AlertCircle} 
+          label="Vacant Units" 
+          value={vacantUnits} 
+          trend="Ready to move in" 
+          gradient="linear-gradient(135deg, #f59e0b 0%, #b45309 100%)" 
+        />
+      </div>
+
+      {/* Property Analytics Chart */}
+      <div className="glass-card mt-20" style={{ padding: '24px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+          <h3>Property Distribution</h3>
+          <span className="badge badge-success">{totalUnits} Total Properties</span>
         </div>
-        <div className="glass-card stat-card">
-          <div className="icon-box green">
-            <CheckCircle2 size={24} />
-          </div>
-          <div className="stat-info">
-            <p>Occupied Units</p>
-            <h3>{occupiedUnits}</h3>
-            <span className="trend">{occupancyRate}% Occupancy</span>
-          </div>
-        </div>
-        <div className="glass-card stat-card">
-          <div className="icon-box orange">
-            <AlertCircle size={24} />
-          </div>
-          <div className="stat-info">
-            <p>Vacant Units</p>
-            <h3>{vacantUnits}</h3>
-            <span className="trend">Ready to move in</span>
-          </div>
+        <div style={{ width: '100%', height: '300px' }}>
+          <ResponsiveContainer>
+            <BarChart data={chartData} margin={{ top: 20, right: 30, left: -20, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" vertical={false} />
+              <XAxis dataKey="name" stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} axisLine={false} tickLine={false} />
+              <YAxis stroke="rgba(255,255,255,0.5)" tick={{fill: 'rgba(255,255,255,0.7)', fontSize: 12}} axisLine={false} tickLine={false} />
+              <Tooltip 
+                contentStyle={{ backgroundColor: 'rgba(15,23,42,0.9)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '8px', color: '#fff' }}
+                itemStyle={{ color: '#fff' }}
+                cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+              />
+              <Bar dataKey="count" fill="#ffffff" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
 
@@ -314,32 +384,71 @@ const Properties = () => {
 
       <style>{`
         .properties-page { padding-bottom: 40px; }
-        .stats-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-          gap: 20px;
-        }
-        .stat-card {
-          display: flex;
-          align-items: center;
-          gap: 20px;
+        
+        .colorful-kpi {
+          border-radius: 20px;
+          color: white;
+          border: none;
+          box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+          position: relative;
+          overflow: hidden;
           padding: 24px;
         }
-        .icon-box {
-          width: 56px;
-          height: 56px;
-          border-radius: 14px;
+        
+        .colorful-kpi::after {
+          content: '';
+          position: absolute;
+          top: 0; right: 0; bottom: 0; left: 0;
+          background: linear-gradient(180deg, rgba(255,255,255,0.15) 0%, rgba(255,255,255,0) 100%);
+          pointer-events: none;
+        }
+
+        .stat-content {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+          z-index: 2;
+        }
+
+        .stat-info p { 
+          color: rgba(255,255,255,0.8); 
+          font-size: 0.9rem; 
+          margin-bottom: 6px; 
+          font-weight: 500;
+        }
+        
+        .stat-info h3 { 
+          font-size: 2rem; 
+          font-weight: 700;
+          letter-spacing: -0.5px;
+          margin-bottom: 4px;
+        }
+        
+        .stat-info .trend { 
+          font-size: 0.8rem; 
+          color: rgba(255,255,255,0.7); 
+          display: block; 
+        }
+
+        .icon-box-colorful {
+          background: rgba(255,255,255,0.2);
+          backdrop-filter: blur(8px);
+          -webkit-backdrop-filter: blur(8px);
+          border-radius: 16px;
+          width: 64px;
+          height: 64px;
           display: flex;
           align-items: center;
           justify-content: center;
+          box-shadow: 0 8px 16px rgba(0,0,0,0.1);
         }
-        .icon-box.blue { background: rgba(99, 102, 241, 0.15); color: #818cf8; }
-        .icon-box.green { background: rgba(16, 185, 129, 0.15); color: #34d399; }
-        .icon-box.orange { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
-        
-        .stat-info p { color: var(--text-muted); font-size: 0.875rem; margin-bottom: 4px; }
-        .stat-info h3 { font-size: 1.5rem; }
-        .trend { font-size: 0.75rem; color: var(--text-muted); margin-top: 4px; display: block; }
+
+        .stats-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+          gap: 24px;
+        }
         
         .page-header {
           display: flex;
@@ -600,6 +709,9 @@ const Properties = () => {
             grid-template-columns: 1fr;
           }
         }
+        
+        .animate-in { animation: fadeIn 0.4s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
     </div>
   );

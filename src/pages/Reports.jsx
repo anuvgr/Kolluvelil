@@ -335,12 +335,27 @@ const Reports = () => {
                         <th>Joined Date</th>
                         <th>Vacated Date</th>
                         <th>Total Paid</th>
+                        <th>Balance</th>
                       </tr>
                     </thead>
                     <tbody>
                       {occupants.map(occupant => {
                         const occupantPayments = payments.filter(p => p.clientId === occupant.id);
                         const totalPaid = occupantPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+                        let monthsOccupied = 1;
+                        if (occupant.agreementDate) {
+                          const start = new Date(occupant.agreementDate);
+                          if (!isNaN(start.getTime())) {
+                            const end = (occupant.status === 'Vacated' && occupant.vacateDate) 
+                              ? new Date(occupant.vacateDate) 
+                              : new Date();
+                            monthsOccupied = (end.getFullYear() - start.getFullYear()) * 12 + (end.getMonth() - start.getMonth()) + 1;
+                            if (monthsOccupied < 1) monthsOccupied = 1;
+                          }
+                        }
+                        const totalExpected = monthsOccupied * parseFloat(occupant.rentAmount || 0);
+                        const balance = totalExpected - totalPaid;
 
                         return (
                           <tr key={occupant.id}>
@@ -365,6 +380,15 @@ const Reports = () => {
                               )}
                             </td>
                             <td className="text-success" style={{ fontWeight: '600' }}>₹{totalPaid.toLocaleString()}</td>
+                            <td>
+                              {balance > 0 ? (
+                                <span className="text-error" style={{ fontWeight: '600' }}>₹{balance.toLocaleString()}</span>
+                              ) : balance < 0 ? (
+                                <span className="text-success" style={{ fontWeight: '600' }}>+₹{Math.abs(balance).toLocaleString()}</span>
+                              ) : (
+                                <span className="text-muted">₹0</span>
+                              )}
+                            </td>
                           </tr>
                         );
                       })}
@@ -842,10 +866,10 @@ const Reports = () => {
           transform: translateY(-2px);
         }
 
-        .report-tabs { display: flex; gap: 10px; padding: 10px; overflow-x: auto; margin-bottom: 20px; }
+        .report-tabs { display: flex; gap: 6px; padding: 10px; overflow-x: auto; margin-bottom: 20px; }
         .report-tabs button { 
-          background: transparent; color: var(--text-muted); padding: 10px 20px; white-space: nowrap; 
-          border-radius: 10px; font-size: 0.9rem; transition: 0.3s;
+          background: transparent; color: var(--text-muted); padding: 6px 12px; white-space: nowrap; 
+          border-radius: 8px; font-size: 0.8rem; transition: 0.3s;
         }
         .report-tabs button:hover { background: rgba(255,255,255,0.05); color: var(--text-main); }
         .report-tabs button.active { background: var(--primary); color: white; }
@@ -869,6 +893,8 @@ const Reports = () => {
           align-items: center; 
           padding: 15px; 
           background: rgba(255,255,255,0.03);
+          flex-wrap: wrap;
+          gap: 15px;
         }
         .stat-item { display: flex; flex-direction: column; align-items: center; gap: 4px; }
         .stat-item .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; }
@@ -926,6 +952,17 @@ const Reports = () => {
         @media (max-width: 600px) {
           .former-details { grid-template-columns: 1fr; }
           .former-grid { grid-template-columns: 1fr; }
+        }
+
+        .reports-page table th, 
+        .reports-page table td {
+          padding: 12px 10px;
+          font-size: 0.9rem;
+        }
+
+        .reports-page .badge {
+          font-size: 0.7rem;
+          padding: 3px 8px;
         }
       `}</style>
     </div>

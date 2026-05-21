@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext';
-import { Plus, Search, Edit3, Trash2, Building, CheckCircle2, AlertCircle, Home, User } from 'lucide-react';
+import { Plus, Search, Edit3, Trash2, Building, CheckCircle2, AlertCircle, Home, User, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 const Properties = () => {
   const { properties, addProperty, updateProperty, deleteProperty, clients } = useApp();
@@ -201,6 +202,10 @@ const Properties = () => {
                 )}
               </div>
               <div className="property-card-footer">
+                <Link to={`/reports?tab=history&unit=${p.unit_number}`} className="btn-icon-text history">
+                  <History size={15} />
+                  <span>History</span>
+                </Link>
                 <button className="btn-icon-text edit" onClick={() => handleEdit(p)}>
                   <Edit3 size={15} />
                   <span>Edit</span>
@@ -548,6 +553,16 @@ const Properties = () => {
           color: #f87171;
           border-color: rgba(248, 113, 113, 0.3);
           background: rgba(248, 113, 113, 0.05);
+        }
+
+        .btn-icon-text.history {
+          text-decoration: none;
+        }
+
+        .btn-icon-text.history:hover {
+          color: #818cf8;
+          border-color: rgba(129, 140, 248, 0.3);
+          background: rgba(129, 140, 248, 0.05);
         }
         
         .empty-state {

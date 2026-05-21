@@ -9,10 +9,14 @@ const Reports = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
   const [selectedTenantId, setSelectedTenantId] = useState('');
+  const [selectedUnitNumber, setSelectedUnitNumber] = useState(searchParams.get('unit') || '');
 
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab) setActiveTab(tab);
+
+    const unit = searchParams.get('unit');
+    if (unit) setSelectedUnitNumber(unit);
   }, [searchParams]);
 
   const totalRevenue = payments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
@@ -236,6 +240,39 @@ const Reports = () => {
   };
 
   const renderPropertyHistory = () => {
+    // Get unique unit numbers from properties
+    const unitNumbers = properties.map(p => p.unit_number);
+    
+    // Fallback: in case there are clients with a unit number not in properties list
+    clients.forEach(c => {
+      if (c.propertyUnit && !unitNumbers.includes(c.propertyUnit)) {
+        unitNumbers.push(c.propertyUnit);
+      }
+    });
+
+    const selectedProperty = properties.find(p => p.unit_number === selectedUnitNumber) || {
+      unit_number: selectedUnitNumber,
+      type: 'N/A',
+      floor: 'N/A',
+      rent: 0,
+      status: 'N/A'
+    };
+
+    // Find occupants for the selected unit
+    const occupants = selectedUnitNumber
+      ? clients
+          .filter(c => c.propertyUnit === selectedUnitNumber)
+          .sort((a, b) => {
+            if (a.status === 'Active' && b.status !== 'Active') return -1;
+            if (a.status !== 'Active' && b.status === 'Active') return 1;
+            const dateA = new Date(a.agreementDate || 0);
+            const dateB = new Date(b.agreementDate || 0);
+            const timeA = isNaN(dateA.getTime()) ? 0 : dateA.getTime();
+            const timeB = isNaN(dateB.getTime()) ? 0 : dateB.getTime();
+            return timeB - timeA;
+          })
+      : [];
+
     const formatDateStr = (dateStr) => {
       if (!dateStr) return '—';
       try {
@@ -251,91 +288,102 @@ const Reports = () => {
 
     return (
       <div className="property-history animate-in">
-        <div className="glass-card mb-20">
-          <h3>Property Occupancy & Tenant History</h3>
-          <p className="text-muted">Detailed timeline of current and former occupants for each property unit.</p>
+        {/* Dropdown Selector */}
+        <div className="glass-card mb-20 animate-in">
+          <div className="flex-row gap-20 align-center">
+            <label style={{ whiteSpace: 'nowrap', fontWeight: '600' }}>Select Unit Number:</label>
+            <select 
+              className="report-select"
+              value={selectedUnitNumber} 
+              onChange={(e) => setSelectedUnitNumber(e.target.value)}
+            >
+              <option value="">-- Choose Unit --</option>
+              {unitNumbers.sort().map(unit => (
+                <option key={unit} value={unit}>Unit {unit}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
-        <div className="flex-col gap-20">
-          {properties.map(property => {
-            const occupants = clients
-              .filter(c => c.propertyUnit === property.unit_number)
-              .sort((a, b) => {
-                if (a.status === 'Active' && b.status !== 'Active') return -1;
-                if (a.status !== 'Active' && b.status === 'Active') return 1;
-                return new Date(b.agreementDate) - new Date(a.agreementDate);
-              });
-
-            return (
-              <div key={property.id} className="glass-card property-history-card animate-in">
-                <div className="flex-row justify-between align-center border-bottom pb-15 mb-15">
-                  <div>
-                    <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Unit {property.unit_number}</h3>
-                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>
-                      {property.type} · Floor {property.floor} · Standard Rent: ₹{parseFloat(property.rent || 0).toLocaleString()}
-                    </span>
-                  </div>
-                  <span className={`badge ${property.status === 'Occupied' ? 'badge-success' : 'badge-warning'}`}>
-                    {property.status || 'Vacant'}
+        {selectedUnitNumber ? (
+          <div className="property-history-content animate-in">
+            {/* Property details header */}
+            <div className="glass-card property-history-card mb-20">
+              <div className="flex-row justify-between align-center border-bottom pb-15 mb-15">
+                <div>
+                  <h3 style={{ fontSize: '1.4rem', margin: 0 }}>Unit {selectedProperty.unit_number} History</h3>
+                  <span className="text-muted" style={{ fontSize: '0.9rem' }}>
+                    Type: {selectedProperty.type} · Floor: {selectedProperty.floor} · Standard Rent: ₹{parseFloat(selectedProperty.rent || 0).toLocaleString()}
                   </span>
                 </div>
-
-                {occupants.length > 0 ? (
-                  <div className="table-container">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Tenant Name</th>
-                          <th>Status</th>
-                          <th>Monthly Rent</th>
-                          <th>Joined Date</th>
-                          <th>Vacated Date</th>
-                          <th>Total Paid</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {occupants.map(occupant => {
-                          const occupantPayments = payments.filter(p => p.clientId === occupant.id);
-                          const totalPaid = occupantPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-
-                          return (
-                            <tr key={occupant.id}>
-                              <td>
-                                <div style={{ fontWeight: '600' }}>{occupant.name}</div>
-                                <div className="text-muted" style={{ fontSize: '0.8rem' }}>{occupant.phone}</div>
-                              </td>
-                              <td>
-                                <span className={`badge ${occupant.status === 'Active' ? 'badge-success' : 'badge-error'}`}>
-                                  {occupant.status || 'Active'}
-                                </span>
-                              </td>
-                              <td>₹{parseFloat(occupant.rentAmount || 0).toLocaleString()}</td>
-                              <td>{formatDateStr(occupant.agreementDate)}</td>
-                              <td>
-                                {occupant.status === 'Vacated' && occupant.vacateDate ? (
-                                  formatDateStr(occupant.vacateDate)
-                                ) : occupant.status === 'Active' ? (
-                                  <span className="text-success" style={{ fontWeight: '500' }}>Present</span>
-                                ) : (
-                                  <span className="text-muted">—</span>
-                                )}
-                              </td>
-                              <td className="text-success" style={{ fontWeight: '600' }}>₹{totalPaid.toLocaleString()}</td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
-                    No occupancy history recorded for this unit.
-                  </div>
-                )}
+                <span className={`badge ${selectedProperty.status === 'Occupied' ? 'badge-success' : 'badge-warning'}`}>
+                  Current Status: {selectedProperty.status || 'Vacant'}
+                </span>
               </div>
-            );
-          })}
-        </div>
+
+              {/* Detailed Occupants Timeline */}
+              <h4 style={{ marginBottom: '15px', color: 'var(--primary)' }}>Occupancy History & Timeline</h4>
+              
+              {occupants.length > 0 ? (
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Tenant Name</th>
+                        <th>Status</th>
+                        <th>Monthly Rent</th>
+                        <th>Joined Date</th>
+                        <th>Vacated Date</th>
+                        <th>Total Paid</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {occupants.map(occupant => {
+                        const occupantPayments = payments.filter(p => p.clientId === occupant.id);
+                        const totalPaid = occupantPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+                        return (
+                          <tr key={occupant.id}>
+                            <td>
+                              <div style={{ fontWeight: '600' }}>{occupant.name}</div>
+                              <div className="text-muted" style={{ fontSize: '0.8rem' }}>{occupant.phone}</div>
+                            </td>
+                            <td>
+                              <span className={`badge ${occupant.status === 'Active' ? 'badge-success' : 'badge-error'}`}>
+                                {occupant.status || 'Active'}
+                              </span>
+                            </td>
+                            <td>₹{parseFloat(occupant.rentAmount || 0).toLocaleString()}</td>
+                            <td>{formatDateStr(occupant.agreementDate)}</td>
+                            <td>
+                              {occupant.status === 'Vacated' && occupant.vacateDate ? (
+                                formatDateStr(occupant.vacateDate)
+                              ) : occupant.status === 'Active' ? (
+                                <span className="text-success" style={{ fontWeight: '500' }}>Present</span>
+                              ) : (
+                                <span className="text-muted">—</span>
+                              )}
+                            </td>
+                            <td className="text-success" style={{ fontWeight: '600' }}>₹{totalPaid.toLocaleString()}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ padding: '30px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No tenant occupancy history recorded for Unit {selectedUnitNumber}.
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="glass-card empty-state animate-in" style={{ padding: '60px', textAlign: 'center' }}>
+            <Users size={48} className="text-muted mb-10" style={{ margin: '0 auto' }} />
+            <p className="text-muted">Please select a property Unit Number from the dropdown above to view its timeline and occupancy history.</p>
+          </div>
+        )}
       </div>
     );
   };

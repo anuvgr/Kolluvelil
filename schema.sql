@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS clients (
   idType TEXT, 
   idCard TEXT, 
   documents JSONB,
+  "propertyUnit" TEXT,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
@@ -57,12 +58,24 @@ CREATE TABLE IF NOT EXISTS users (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS properties (
+  id TEXT PRIMARY KEY,
+  unit_number TEXT UNIQUE,
+  floor INTEGER,
+  type TEXT,
+  rent NUMERIC,
+  deposit NUMERIC,
+  status TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
 -- 1. Disable security for now so your sync works immediately
 ALTER TABLE clients DISABLE ROW LEVEL SECURITY;
 ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
 ALTER TABLE expenses DISABLE ROW LEVEL SECURITY;
 ALTER TABLE logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE properties DISABLE ROW LEVEL SECURITY;
 
 -- 2. ENABLE REAL-TIME REPLICATION
 -- This allows different browsers to see updates instantly without refreshing
@@ -70,4 +83,4 @@ BEGIN;
   DROP PUBLICATION IF EXISTS supabase_realtime;
   CREATE PUBLICATION supabase_realtime;
 COMMIT;
-ALTER PUBLICATION supabase_realtime ADD TABLE clients, payments, expenses, logs, users;
+ALTER PUBLICATION supabase_realtime ADD TABLE clients, payments, expenses, logs, users, properties;

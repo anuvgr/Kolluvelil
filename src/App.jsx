@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Users, CreditCard, BarChart3, Home, TrendingDown, UserX, ChevronDown, ChevronRight, FileBarChart, Calendar, AlertCircle, Wallet, PieChart, User, List, Settings as SettingsIcon, LogOut, RefreshCw, Sun, Moon, Building } from 'lucide-react';
+import { LayoutDashboard, Users, CreditCard, BarChart3, Home, TrendingDown, UserX, ChevronDown, ChevronRight, FileBarChart, Calendar, AlertCircle, Wallet, PieChart, User, List, Settings as SettingsIcon, LogOut, RefreshCw, Sun, Moon, Building, History } from 'lucide-react';
 import { AppProvider, useApp } from './context/AppContext';
 import Dashboard from './pages/Dashboard';
 import Clients from './pages/Clients';
@@ -33,11 +33,20 @@ const AppContent = () => {
   const [theme, setTheme] = useState(() => {
     return localStorage.getItem('rental_theme') || 'dark';
   });
+  
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
 
   React.useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     localStorage.setItem('rental_theme', theme);
   }, [theme]);
+
+  React.useEffect(() => {
+    if (location.pathname === '/reports') {
+      setReportsOpen(true);
+    }
+  }, [location.pathname]);
 
   const reportSubItems = [
     { label: 'Financial Summary', tab: 'summary',    icon: FileBarChart },
@@ -45,6 +54,8 @@ const AppContent = () => {
     { label: 'Pending Rent',      tab: 'pending',    icon: AlertCircle },
     { label: 'Advance Deposits',  tab: 'advance',    icon: Wallet },
     { label: 'Expense Report',    tab: 'expenses',   icon: PieChart },
+    { label: 'Property Wise',     tab: 'properties', icon: Building },
+    { label: 'Property History',  tab: 'history',    icon: History },
     { label: 'Tenant Reports',    tab: 'tenants',    icon: Users },
     { label: 'Tenant Wise',       tab: 'individual', icon: User },
   ];
@@ -81,16 +92,19 @@ const AppContent = () => {
 
                 {reportsOpen && (
                   <div className="sub-items">
-                    {reportSubItems.map(({ label, tab, icon: Icon }) => (
-                      <Link
-                        key={tab}
-                        to={`/reports?tab=${tab}`}
-                        className={`sidebar-sub-item`}
-                      >
-                        <Icon size={15} />
-                        <span>{label}</span>
-                      </Link>
-                    ))}
+                    {reportSubItems.map(({ label, tab, icon: Icon }) => {
+                      const isActive = location.pathname === '/reports' && searchParams.get('tab') === tab;
+                      return (
+                        <Link
+                          key={tab}
+                          to={`/reports?tab=${tab}`}
+                          className={`sidebar-sub-item ${isActive ? 'active' : ''}`}
+                        >
+                          <Icon size={15} />
+                          <span>{label}</span>
+                        </Link>
+                      );
+                    })}
                   </div>
                 )}
               </div>

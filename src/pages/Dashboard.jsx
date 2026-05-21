@@ -116,7 +116,7 @@ const Dashboard = () => {
             <h3>Revenue Growth</h3>
             <span className="badge badge-success">+12.5% this month</span>
           </div>
-          <div style={{ width: '100%', height: '280px' }}>
+          <div style={{ width: '100%', height: '220px' }}>
             <ResponsiveContainer>
               <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <defs>
@@ -138,38 +138,7 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="glass-card ai-alerts-container">
-          <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '20px' }}>
-            <div className="ai-icon-bg">
-              <Sparkles size={20} className="text-primary" />
-            </div>
-            <h3 style={{ background: 'linear-gradient(90deg, #3b82f6, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>AI Insights</h3>
-          </div>
-          
-          <div className="ai-alert-list">
-            <div className="ai-alert-item">
-              <div className="ai-indicator warning"></div>
-              <div className="ai-content">
-                <h4>Renewal Risk</h4>
-                <p>Tenant <strong>Anu K K</strong> has a 15% probability of non-renewal next month. Consider reaching out.</p>
-              </div>
-            </div>
-            <div className="ai-alert-item">
-              <div className="ai-indicator success"></div>
-              <div className="ai-content">
-                <h4>Revenue Optimized</h4>
-                <p>Rent collection is 12% faster than last month. Automated reminders are working efficiently.</p>
-              </div>
-            </div>
-            <div className="ai-alert-item">
-              <div className="ai-indicator info"></div>
-              <div className="ai-content">
-                <h4>Market Trend</h4>
-                <p>Similar properties in the area are renting for 5% more. Consider revising rent for Unit 102.</p>
-              </div>
-            </div>
-          </div>
-        </div>
+
       </div>
 
       <div className="dashboard-grid-layout mt-20">
@@ -297,7 +266,7 @@ const Dashboard = () => {
 
         .charts-grid {
           display: grid;
-          grid-template-columns: 2fr 1fr;
+          grid-template-columns: 1fr;
           gap: 24px;
         }
         

@@ -7,6 +7,7 @@ import Clients from './pages/Clients';
 import Payments from './pages/Payments';
 import Expenses from './pages/Expenses';
 import Reports from './pages/Reports';
+import Rent from './pages/Rent';
 import FormerTenants from './pages/FormerTenants';
 import Settings from './pages/Settings';
 import Login from './pages/Login';
@@ -50,8 +51,6 @@ const AppContent = () => {
 
   const reportSubItems = [
     { label: 'Financial Summary', tab: 'summary',    icon: FileBarChart },
-    { label: 'Monthly Rent',      tab: 'monthly',    icon: Calendar },
-    { label: 'Pending Rent',      tab: 'pending',    icon: AlertCircle },
     { label: 'Advance Deposits',  tab: 'advance',    icon: Wallet },
     { label: 'Expense Report',    tab: 'expenses',   icon: PieChart },
     { label: 'Property Wise',     tab: 'properties', icon: Building },
@@ -76,6 +75,7 @@ const AppContent = () => {
               <SidebarItem to="/clients" icon={Users} label="Clients" />
               <SidebarItem to="/properties" icon={Building} label="Properties" />
               <SidebarItem to="/payments" icon={CreditCard} label="Payments" />
+              <SidebarItem to="/rent" icon={Calendar} label="Rent" />
               <SidebarItem to="/expenses" icon={TrendingDown} label="Expenses" />
 
               {/* Expandable Reports */}
@@ -154,6 +154,7 @@ const AppContent = () => {
                 <Route path="/clients" element={<Clients />} />
                 <Route path="/properties" element={<Properties />} />
                 <Route path="/payments" element={<Payments />} />
+                <Route path="/rent" element={<Rent />} />
                 <Route path="/expenses" element={<Expenses />} />
                 <Route path="/reports" element={<Reports />} />
                 <Route path="/former-tenants" element={<FormerTenants />} />

@@ -110,21 +110,7 @@ const Reports = () => {
     );
   };
 
-  // Monthly breakdown
-  const currentMonth = new Date().toLocaleString('default', { month: 'long' });
-  const currentYear = new Date().getFullYear();
 
-  const monthlyRentReport = payments.reduce((acc, p) => {
-    const key = `${p.month} ${p.year}`;
-    acc[key] = (acc[key] || 0) + parseFloat(p.amount);
-    return acc;
-  }, {});
-
-  // Pending Rent Report (Simulated logic: Tenants who don't have a payment record for the current month)
-  const pendingTenants = clients.filter(client => {
-    const hasPaid = payments.some(p => p.clientId === client.id && p.month === currentMonth && p.year === currentYear);
-    return !hasPaid;
-  });
 
   const renderPropertyReport = () => {
     const totalUnits = properties.length;
@@ -455,81 +441,7 @@ const Reports = () => {
     </div>
   );
 
-  const renderMonthlyReport = () => (
-    <div className="glass-card mt-20 animate-in">
-      <h3>Monthly Rent Collection Report</h3>
-      <div className="table-container mt-20">
-        <table>
-          <thead>
-            <tr>
-              <th>Month/Year</th>
-              <th>Collection Target</th>
-              <th>Actual Collected</th>
-              <th>Variance</th>
-            </tr>
-          </thead>
-          <tbody>
-            {Object.entries(monthlyRentReport).map(([key, val]) => (
-              <tr key={key}>
-                <td><strong>{key}</strong></td>
-                <td>₹{clients.reduce((sum, c) => sum + parseFloat(c.rentAmount || 0), 0).toLocaleString()}</td>
-                <td className="text-success">₹{val.toLocaleString()}</td>
-                <td><span className="badge badge-success">On Track</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
-  const renderPendingReport = () => (
-    <div className="glass-card mt-20 animate-in">
-      <div className="flex-row justify-between mb-20">
-        <h3>Pending Rent Report - {currentMonth} {currentYear}</h3>
-        <span className="badge badge-error">{pendingTenants.length} Pending</span>
-      </div>
-      <div className="table-container">
-        <table>
-          <thead>
-            <tr>
-              <th>Tenant Name</th>
-              <th>Contact</th>
-              <th>Monthly Rent</th>
-              <th>Last Paid</th>
-              <th>Action</th>
-            </tr>
-          </thead>
-          <tbody>
-            {pendingTenants.map(client => (
-              <tr key={client.id}>
-                <td>{client.name}</td>
-                <td>{client.phone}</td>
-                <td>₹{client.rentAmount}</td>
-                <td className="text-muted">No record this month</td>
-                <td>
-                  <button 
-                    className="btn-small btn-whatsapp"
-                    onClick={() => {
-                      const message = `*RENT REMINDER - KOLLUVELIL RENTALS*%0A%0A` +
-                        `Hello *${client.name}*,%0A` +
-                        `This is a friendly reminder that the rent of *₹${client.rentAmount}* for *${currentMonth} ${currentYear}* is pending.%0A%0A` +
-                        `Kindly process the payment at your earliest convenience. If you have already paid, please ignore this message.%0A%0A` +
-                        `Thank you!`;
-                      const whatsappUrl = `https://wa.me/${client.phone.replace(/\D/g, '')}?text=${message}`;
-                      window.open(whatsappUrl, '_blank');
-                    }}
-                  >
-                    <MessageCircle size={14} /> Send Reminder
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
 
   const renderAdvanceReport = () => (
     <div className="glass-card mt-20 animate-in">
@@ -804,8 +716,7 @@ const Reports = () => {
     <div className="reports-page">
       <div className="report-tabs glass-card">
         <button className={activeTab === 'summary'    ? 'active' : ''} onClick={() => setActiveTab('summary')}>Financial Summary</button>
-        <button className={activeTab === 'monthly'    ? 'active' : ''} onClick={() => setActiveTab('monthly')}>Monthly Rent</button>
-        <button className={activeTab === 'pending'    ? 'active' : ''} onClick={() => setActiveTab('pending')}>Pending Rent</button>
+
         <button className={activeTab === 'advance'    ? 'active' : ''} onClick={() => setActiveTab('advance')}>Advance Deposits</button>
         <button className={activeTab === 'expenses'   ? 'active' : ''} onClick={() => setActiveTab('expenses')}>Expense Report</button>
         <button className={activeTab === 'properties' ? 'active' : ''} onClick={() => setActiveTab('properties')}>Property Wise</button>
@@ -816,8 +727,7 @@ const Reports = () => {
 
       <div className="tab-content mt-20">
         {activeTab === 'summary' && renderSummary()}
-        {activeTab === 'monthly' && renderMonthlyReport()}
-        {activeTab === 'pending' && renderPendingReport()}
+
         {activeTab === 'advance' && renderAdvanceReport()}
         {activeTab === 'expenses' && renderExpenseReport()}
         {activeTab === 'properties' && renderPropertyReport()}

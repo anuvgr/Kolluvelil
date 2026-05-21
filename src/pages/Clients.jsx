@@ -825,7 +825,17 @@ const Clients = () => {
                     <td>
                       <div className="user-info">
                         {client.photo ? (
-                          <img src={client.photo} className="avatar sm" alt="" />
+                          <img
+                            src={client.photo}
+                            className="avatar sm"
+                            alt={client.name}
+                            title="Click to enlarge"
+                            style={{ cursor: 'zoom-in' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveImageLightbox({ src: client.photo, title: `${client.name} - Photo` });
+                            }}
+                          />
                         ) : (
                           <div className="avatar sm"></div>
                         )}

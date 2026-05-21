@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
-import { FileBarChart, Download, Calendar, Filter, PieChart, TrendingUp, TrendingDown, Users, AlertCircle } from 'lucide-react';
+import { FileBarChart, Download, Calendar, Filter, PieChart, TrendingUp, TrendingDown, Users, AlertCircle, MessageCircle } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 
@@ -217,7 +217,22 @@ const Reports = () => {
                 <td>{client.phone}</td>
                 <td>₹{client.rentAmount}</td>
                 <td className="text-muted">No record this month</td>
-                <td><button className="btn-small">Send Reminder</button></td>
+                <td>
+                  <button 
+                    className="btn-small btn-whatsapp"
+                    onClick={() => {
+                      const message = `*RENT REMINDER - KOLLUVELIL RENTALS*%0A%0A` +
+                        `Hello *${client.name}*,%0A` +
+                        `This is a friendly reminder that the rent of *₹${client.rentAmount}* for *${currentMonth} ${currentYear}* is pending.%0A%0A` +
+                        `Kindly process the payment at your earliest convenience. If you have already paid, please ignore this message.%0A%0A` +
+                        `Thank you!`;
+                      const whatsappUrl = `https://wa.me/${client.phone.replace(/\D/g, '')}?text=${message}`;
+                      window.open(whatsappUrl, '_blank');
+                    }}
+                  >
+                    <MessageCircle size={14} /> Send Reminder
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -519,6 +534,20 @@ const Reports = () => {
       </div>
 
       <style>{`
+        .btn-whatsapp {
+          background: #25d366 !important;
+          color: white !important;
+          border: none !important;
+          box-shadow: 0 4px 14px rgba(37, 211, 102, 0.3);
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .btn-whatsapp:hover {
+          background: #128c7e !important;
+          transform: translateY(-2px);
+        }
+
         .report-tabs { display: flex; gap: 10px; padding: 10px; overflow-x: auto; margin-bottom: 20px; }
         .report-tabs button { 
           background: transparent; color: var(--text-muted); padding: 10px 20px; white-space: nowrap; 

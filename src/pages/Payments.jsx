@@ -152,6 +152,20 @@ const Payments = () => {
       return;
     }
 
+    const normalize = (val) => (val ? String(val).trim().toLowerCase() : '');
+    
+    const alreadyPaid = payments.some(p => {
+      const matchClient = normalize(p.clientId) === normalize(formData.clientId) || normalize(p.tenantId) === normalize(formData.clientId);
+      const matchMonth = normalize(p.month) === normalize(formData.month);
+      const matchYear = normalize(p.year) === normalize(formData.year);
+      return matchClient && matchMonth && matchYear;
+    });
+
+    if (alreadyPaid) {
+      alert(`This tenant already has a payment recorded for ${formData.month} ${formData.year}.`);
+      return;
+    }
+
     const paymentId = Date.now().toString();
     const payment = {
       ...formData,
@@ -217,37 +231,50 @@ const Payments = () => {
               </select>
             </div>
 
-            {formData.clientId && expenses && expenses.filter(e => e.tenantId === formData.clientId).length > 0 && (
-              <div className="glass-card" style={{ padding: '15px', border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)', marginBottom: '20px' }}>
-                <h4 style={{ color: '#fbbf24', marginBottom: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Tenant Expense History</h4>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                  {expenses.filter(e => e.tenantId === formData.clientId).map(exp => (
-                    <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
-                      <span>{exp.title} ({new Date(exp.date).toLocaleDateString('en-GB').replace(/\//g, '-')})</span>
-                      <strong style={{ color: '#f87171' }}>₹{exp.amount}</strong>
-                    </div>
-                  ))}
+            {(() => {
+              if (!formData.clientId || !expenses) return null;
+              
+              const tenantPayments = payments.filter(p => p.clientId === formData.clientId);
+              const lastPaymentDate = tenantPayments.length > 0 
+                ? new Date(Math.max(...tenantPayments.map(p => new Date(p.date)))) 
+                : new Date(0);
+                
+              const pendingExpenses = expenses.filter(e => e.tenantId === formData.clientId && new Date(e.date) > lastPaymentDate);
+              
+              if (pendingExpenses.length === 0) return null;
+
+              const totalExpenses = pendingExpenses.reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
+
+              return (
+                <div className="glass-card" style={{ padding: '15px', border: '1px solid rgba(245, 158, 11, 0.3)', background: 'rgba(245, 158, 11, 0.05)', marginBottom: '20px' }}>
+                  <h4 style={{ color: '#fbbf24', marginBottom: '10px', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Unadjusted Tenant Expenses</h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    {pendingExpenses.map(exp => (
+                      <div key={exp.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem' }}>
+                        <span>{exp.title} ({new Date(exp.date).toLocaleDateString('en-GB').replace(/\//g, '-')})</span>
+                        <strong style={{ color: '#f87171' }}>₹{exp.amount}</strong>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981' }} onClick={() => {
+                      const client = clients.find(c => c.id === formData.clientId);
+                      const newAmount = Math.max(0, (parseFloat(client?.rentAmount || 0) - totalExpenses));
+                      setFormData(prev => ({ ...prev, amount: newAmount }));
+                    }}>
+                      Deduct (Pay Less)
+                    </button>
+                    <button type="button" className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }} onClick={() => {
+                      const client = clients.find(c => c.id === formData.clientId);
+                      const newAmount = parseFloat(client?.rentAmount || 0) + totalExpenses;
+                      setFormData(prev => ({ ...prev, amount: newAmount }));
+                    }}>
+                      Debit (Pay More)
+                    </button>
+                  </div>
                 </div>
-                <div style={{ display: 'flex', gap: '10px' }}>
-                  <button type="button" className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px', border: '1px solid rgba(16, 185, 129, 0.3)', color: '#10b981' }} onClick={() => {
-                    const client = clients.find(c => c.id === formData.clientId);
-                    const totalExpenses = expenses.filter(e => e.tenantId === formData.clientId).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-                    const newAmount = Math.max(0, (parseFloat(client?.rentAmount || 0) - totalExpenses));
-                    setFormData(prev => ({ ...prev, amount: newAmount }));
-                  }}>
-                    Deduct
-                  </button>
-                  <button type="button" className="btn-secondary" style={{ flex: 1, fontSize: '0.8rem', padding: '8px', border: '1px solid rgba(239, 68, 68, 0.3)', color: '#ef4444' }} onClick={() => {
-                    const client = clients.find(c => c.id === formData.clientId);
-                    const totalExpenses = expenses.filter(e => e.tenantId === formData.clientId).reduce((sum, exp) => sum + parseFloat(exp.amount || 0), 0);
-                    const newAmount = parseFloat(client?.rentAmount || 0) + totalExpenses;
-                    setFormData(prev => ({ ...prev, amount: newAmount }));
-                  }}>
-                    Debit (Add)
-                  </button>
-                </div>
-              </div>
-            )}
+              );
+            })()}
 
             <div className="grid-2">
               <div className="input-group">

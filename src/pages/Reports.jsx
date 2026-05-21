@@ -946,23 +946,50 @@ const Reports = () => {
         .former-id { border-top: 1px solid var(--glass-border); padding-top: 14px; }
         .former-id label, .former-docs label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; display: block; margin-bottom: 8px; letter-spacing: 0.5px; }
         .former-id img { width: 100%; border-radius: 10px; max-height: 160px; object-fit: cover; }
-
         .former-docs { border-top: 1px solid var(--glass-border); padding-top: 14px; }
 
-        @media (max-width: 600px) {
+        /* ======== MOBILE ======== */
+        @media (max-width: 768px) {
+          .report-tabs { display: none; }
+          .report-tabs-mobile { display: block; }
+
+          .reports-page .grid-2 { grid-template-columns: 1fr !important; }
+          .tenant-reports .grid-2,
+          .property-reports .grid-2 { display: flex !important; flex-direction: column; gap: 16px; }
+
+          .compact-stats-bar { flex-direction: column; align-items: stretch; gap: 8px; padding: 12px; }
+          .stat-divider { width: 100%; height: 1px; }
+          .stat-item { flex-direction: row; justify-content: space-between; padding: 4px 0; }
+          .stat-item .label { text-align: left; }
+
+          .flex-row { flex-direction: column; gap: 10px; }
+          .flex-row.justify-between { flex-direction: row; flex-wrap: wrap; align-items: center; }
+
+          .property-history-card { padding: 14px; }
+
           .former-details { grid-template-columns: 1fr; }
           .former-grid { grid-template-columns: 1fr; }
+
+          .report-select { min-width: unset; width: 100%; }
+
+          .reports-page table th, 
+          .reports-page table td { padding: 8px 6px; font-size: 0.78rem; }
+
+          .reports-page .glass-card { padding: 14px; }
+
+          .pl-item { flex-direction: column; align-items: flex-start; gap: 2px; }
+          .cf-item { flex-direction: column; gap: 4px; }
+          .btn-whatsapp { font-size: 0.75rem; padding: 6px 10px; }
+
+          .individual-report .flex-row { flex-direction: row; flex-wrap: wrap; align-items: center; }
         }
 
-        .reports-page table th, 
-        .reports-page table td {
-          padding: 12px 10px;
-          font-size: 0.9rem;
-        }
-
-        .reports-page .badge {
-          font-size: 0.7rem;
-          padding: 3px 8px;
+        @media (max-width: 480px) {
+          .reports-page table th, 
+          .reports-page table td { padding: 6px 5px; font-size: 0.7rem; }
+          .former-stats { flex-direction: column; gap: 8px; }
+          .fstat-div { width: 100%; height: 1px; }
+          .reports-page .btn-small { font-size: 0.7rem; padding: 5px 8px; }
         }
       `}</style>
     </div>

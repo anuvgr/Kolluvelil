@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { useSearchParams } from 'react-router-dom';
 
 const Reports = () => {
-  const { clients, payments, expenses } = useApp();
+  const { clients = [], payments = [], expenses = [], properties = [] } = useApp();
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'summary');
   const [selectedTenantId, setSelectedTenantId] = useState('');
@@ -121,6 +121,119 @@ const Reports = () => {
     const hasPaid = payments.some(p => p.clientId === client.id && p.month === currentMonth && p.year === currentYear);
     return !hasPaid;
   });
+
+  const renderPropertyReport = () => {
+    const totalUnits = properties.length;
+    const occupiedUnits = properties.filter(p => p.status === 'Occupied').length;
+    const vacantUnits = totalUnits - occupiedUnits;
+    const occupancyRate = totalUnits ? Math.round((occupiedUnits / totalUnits) * 100) : 0;
+
+    return (
+      <div className="property-reports animate-in">
+        <div className="compact-stats-bar glass-card mb-20 animate-in">
+          <div className="stat-item">
+            <span className="label">Total Units</span>
+            <span className="value">{totalUnits}</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="label">Occupied Units</span>
+            <span className="value text-success">{occupiedUnits}</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="label">Vacant Units</span>
+            <span className="value text-warning">{vacantUnits}</span>
+          </div>
+          <div className="stat-divider"></div>
+          <div className="stat-item">
+            <span className="label">Occupancy Rate</span>
+            <span className="value" style={{ color: '#818cf8' }}>{occupancyRate}%</span>
+          </div>
+        </div>
+
+        <div className="glass-card mt-20 animate-in">
+          <div className="flex-row justify-between mb-20 align-center">
+            <h3>Property Wise Financial Performance</h3>
+            <span className="badge badge-success">Unit Breakdown</span>
+          </div>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Unit Number</th>
+                  <th>Floor</th>
+                  <th>BHK Type</th>
+                  <th>Standard Rent</th>
+                  <th>Current Status</th>
+                  <th>Current Tenant</th>
+                  <th>Total Revenue</th>
+                  <th>Total Expenses</th>
+                  <th>Net Earnings</th>
+                </tr>
+              </thead>
+              <tbody>
+                {properties.map(property => {
+                  const propertyClients = clients.filter(c => c.propertyUnit === property.unit_number);
+                  const clientIds = propertyClients.map(c => c.id);
+                  const activeTenant = propertyClients.find(c => (c.status || 'Active') === 'Active');
+                  
+                  const totalCollected = payments
+                    .filter(p => clientIds.includes(p.clientId))
+                    .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+                    
+                  const totalIncurredExpenses = expenses
+                    .filter(e => e.tenantId && clientIds.includes(e.tenantId))
+                    .reduce((sum, e) => sum + parseFloat(e.amount || 0), 0);
+                    
+                  const netReturn = totalCollected - totalIncurredExpenses;
+
+                  return (
+                    <tr key={property.id}>
+                      <td><strong>{property.unit_number}</strong></td>
+                      <td>Floor {property.floor}</td>
+                      <td>
+                        <span className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: 'var(--text-main)', border: '1px solid var(--glass-border)' }}>
+                          {property.type}
+                        </span>
+                      </td>
+                      <td>₹{parseFloat(property.rent || 0).toLocaleString()}</td>
+                      <td>
+                        <span className={`badge ${property.status === 'Occupied' ? 'badge-success' : 'badge-warning'}`}>
+                          {property.status || 'Vacant'}
+                        </span>
+                      </td>
+                      <td>
+                        {activeTenant ? (
+                          <span style={{ fontWeight: '500' }}>{activeTenant.name}</span>
+                        ) : (
+                          <span className="text-muted">—</span>
+                        )}
+                      </td>
+                      <td className="text-success"><strong>₹{totalCollected.toLocaleString()}</strong></td>
+                      <td className="text-error">₹{totalIncurredExpenses.toLocaleString()}</td>
+                      <td>
+                        <strong className={netReturn >= 0 ? 'text-success' : 'text-error'}>
+                          ₹{netReturn.toLocaleString()}
+                        </strong>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {properties.length === 0 && (
+                  <tr>
+                    <td colSpan="9" style={{ textAlign: 'center', padding: '30px', color: 'var(--text-muted)' }}>
+                      No properties registered in the system.
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderSummary = () => (
     <div className="report-section animate-in">
@@ -518,6 +631,7 @@ const Reports = () => {
         <button className={activeTab === 'pending'    ? 'active' : ''} onClick={() => setActiveTab('pending')}>Pending Rent</button>
         <button className={activeTab === 'advance'    ? 'active' : ''} onClick={() => setActiveTab('advance')}>Advance Deposits</button>
         <button className={activeTab === 'expenses'   ? 'active' : ''} onClick={() => setActiveTab('expenses')}>Expense Report</button>
+        <button className={activeTab === 'properties' ? 'active' : ''} onClick={() => setActiveTab('properties')}>Property Wise</button>
         <button className={activeTab === 'tenants'    ? 'active' : ''} onClick={() => setActiveTab('tenants')}>Tenant Reports</button>
         <button className={activeTab === 'individual' ? 'active' : ''} onClick={() => setActiveTab('individual')}>Tenant Wise</button>
       </div>
@@ -528,6 +642,7 @@ const Reports = () => {
         {activeTab === 'pending' && renderPendingReport()}
         {activeTab === 'advance' && renderAdvanceReport()}
         {activeTab === 'expenses' && renderExpenseReport()}
+        {activeTab === 'properties' && renderPropertyReport()}
         {activeTab === 'tenants' && renderTenantReports()}
         {activeTab === 'individual' && renderIndividualReport()}
         {activeTab === 'former' && renderFormerTenants()}

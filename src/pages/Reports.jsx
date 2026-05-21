@@ -235,6 +235,111 @@ const Reports = () => {
     );
   };
 
+  const renderPropertyHistory = () => {
+    const formatDateStr = (dateStr) => {
+      if (!dateStr) return '—';
+      try {
+        const date = new Date(dateStr);
+        if (!isNaN(date.getTime())) {
+          return date.toLocaleDateString('en-GB').replace(/\//g, '-');
+        }
+        return dateStr;
+      } catch (e) {
+        return dateStr;
+      }
+    };
+
+    return (
+      <div className="property-history animate-in">
+        <div className="glass-card mb-20">
+          <h3>Property Occupancy & Tenant History</h3>
+          <p className="text-muted">Detailed timeline of current and former occupants for each property unit.</p>
+        </div>
+
+        <div className="flex-col gap-20">
+          {properties.map(property => {
+            const occupants = clients
+              .filter(c => c.propertyUnit === property.unit_number)
+              .sort((a, b) => {
+                if (a.status === 'Active' && b.status !== 'Active') return -1;
+                if (a.status !== 'Active' && b.status === 'Active') return 1;
+                return new Date(b.agreementDate) - new Date(a.agreementDate);
+              });
+
+            return (
+              <div key={property.id} className="glass-card property-history-card animate-in">
+                <div className="flex-row justify-between align-center border-bottom pb-15 mb-15">
+                  <div>
+                    <h3 style={{ fontSize: '1.25rem', margin: 0 }}>Unit {property.unit_number}</h3>
+                    <span className="text-muted" style={{ fontSize: '0.85rem' }}>
+                      {property.type} · Floor {property.floor} · Standard Rent: ₹{parseFloat(property.rent || 0).toLocaleString()}
+                    </span>
+                  </div>
+                  <span className={`badge ${property.status === 'Occupied' ? 'badge-success' : 'badge-warning'}`}>
+                    {property.status || 'Vacant'}
+                  </span>
+                </div>
+
+                {occupants.length > 0 ? (
+                  <div className="table-container">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Tenant Name</th>
+                          <th>Status</th>
+                          <th>Monthly Rent</th>
+                          <th>Joined Date</th>
+                          <th>Vacated Date</th>
+                          <th>Total Paid</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {occupants.map(occupant => {
+                          const occupantPayments = payments.filter(p => p.clientId === occupant.id);
+                          const totalPaid = occupantPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+
+                          return (
+                            <tr key={occupant.id}>
+                              <td>
+                                <div style={{ fontWeight: '600' }}>{occupant.name}</div>
+                                <div className="text-muted" style={{ fontSize: '0.8rem' }}>{occupant.phone}</div>
+                              </td>
+                              <td>
+                                <span className={`badge ${occupant.status === 'Active' ? 'badge-success' : 'badge-error'}`}>
+                                  {occupant.status || 'Active'}
+                                </span>
+                              </td>
+                              <td>₹{parseFloat(occupant.rentAmount || 0).toLocaleString()}</td>
+                              <td>{formatDateStr(occupant.agreementDate)}</td>
+                              <td>
+                                {occupant.status === 'Vacated' && occupant.vacateDate ? (
+                                  formatDateStr(occupant.vacateDate)
+                                ) : occupant.status === 'Active' ? (
+                                  <span className="text-success" style={{ fontWeight: '500' }}>Present</span>
+                                ) : (
+                                  <span className="text-muted">—</span>
+                                )}
+                              </td>
+                              <td className="text-success" style={{ fontWeight: '600' }}>₹{totalPaid.toLocaleString()}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div style={{ padding: '20px 0', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    No occupancy history recorded for this unit.
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
   const renderSummary = () => (
     <div className="report-section animate-in">
       <div className="grid-2">
@@ -632,6 +737,7 @@ const Reports = () => {
         <button className={activeTab === 'advance'    ? 'active' : ''} onClick={() => setActiveTab('advance')}>Advance Deposits</button>
         <button className={activeTab === 'expenses'   ? 'active' : ''} onClick={() => setActiveTab('expenses')}>Expense Report</button>
         <button className={activeTab === 'properties' ? 'active' : ''} onClick={() => setActiveTab('properties')}>Property Wise</button>
+        <button className={activeTab === 'history'    ? 'active' : ''} onClick={() => setActiveTab('history')}>Property History</button>
         <button className={activeTab === 'tenants'    ? 'active' : ''} onClick={() => setActiveTab('tenants')}>Tenant Reports</button>
         <button className={activeTab === 'individual' ? 'active' : ''} onClick={() => setActiveTab('individual')}>Tenant Wise</button>
       </div>
@@ -643,12 +749,37 @@ const Reports = () => {
         {activeTab === 'advance' && renderAdvanceReport()}
         {activeTab === 'expenses' && renderExpenseReport()}
         {activeTab === 'properties' && renderPropertyReport()}
+        {activeTab === 'history' && renderPropertyHistory()}
         {activeTab === 'tenants' && renderTenantReports()}
         {activeTab === 'individual' && renderIndividualReport()}
         {activeTab === 'former' && renderFormerTenants()}
       </div>
 
       <style>{`
+        .property-history-card {
+          padding: 24px;
+          margin-bottom: 24px;
+          background: rgba(255, 255, 255, 0.02);
+          border-radius: 16px;
+          border: 1px solid var(--glass-border);
+        }
+        .border-bottom {
+          border-bottom: 1px solid var(--glass-border);
+        }
+        .pb-15 {
+          padding-bottom: 15px;
+        }
+        .mb-15 {
+          margin-bottom: 15px;
+        }
+        .flex-col {
+          display: flex;
+          flex-direction: column;
+        }
+        .gap-20 {
+          gap: 20px;
+        }
+
         .btn-whatsapp {
           background: #25d366 !important;
           color: white !important;
